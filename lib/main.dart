@@ -1,115 +1,118 @@
 import 'package:flutter/material.dart';
-
-class Product {
-  const Product({required this.name});
-  final String name;
-}
-
-typedef void CartChangedCallback(Product product, bool inCart);
-
-class ShoppingListItem extends StatelessWidget {
-  ShoppingListItem(
-      {required Product product,
-      required this.inCart,
-      required this.onCartChanged})
-      : this.product = product;
-
-  final Product product;
-  final bool inCart;
-  final CartChangedCallback onCartChanged;
-
-  Color _getColor(BuildContext context) {
-    // The theme depends on the BuildContext because different parts of the tree
-    // can have different themes.  The BuildContext indicates where the build is
-    // taking place and therefore which theme to use.
-
-    return inCart ? Colors.black54 : Theme.of(context).primaryColor;
-  }
-
-  TextStyle _getTextStyle(BuildContext context) {
-    if (!inCart) return TextStyle();
-
-    return TextStyle(
-      color: Colors.black54,
-      decoration: TextDecoration.lineThrough,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      onTap: () {
-        onCartChanged(product, inCart);
-      },
-      leading: CircleAvatar(
-        backgroundColor: _getColor(context),
-        child: Text(product.name[0]),
-      ),
-      title: Text(product.name, style: _getTextStyle(context)),
-    );
-  }
-}
-
-class ShoppingList extends StatefulWidget {
-  ShoppingList({required this.products});
-
-  final List<Product> products;
-
-  // The framework calls createState the first time a widget appears at a given
-  // location in the tree. If the parent rebuilds and uses the same type of
-  // widget (with the same key), the framework re-uses the State object
-  // instead of creating a new State object.
-
-  @override
-  _ShoppingListState createState() => _ShoppingListState();
-}
-
-class _ShoppingListState extends State<ShoppingList> {
-  Set<Product> _shoppingCart = Set<Product>();
-
-  void _handleCartChanged(Product product, bool inCart) {
-    setState(() {
-      // When a user changes what's in the cart, you need to change
-      // _shoppingCart inside a setState call to trigger a rebuild.
-      // The framework then calls build, below,
-      // which updates the visual appearance of the app.
-
-      if (!inCart)
-        _shoppingCart.add(product);
-      else
-        _shoppingCart.remove(product);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Shopping List'),
-      ),
-      body: ListView(
-        padding: EdgeInsets.symmetric(vertical: 8.0),
-        children: widget.products.map((Product product) {
-          return ShoppingListItem(
-            product: product,
-            inCart: _shoppingCart.contains(product),
-            onCartChanged: _handleCartChanged,
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
+import 'package:flutter/rendering.dart' show debugPaintSizeEnabled;
 
 void main() {
-  runApp(MaterialApp(
-    title: 'Shopping App',
-    home: ShoppingList(
-      products: <Product>[
-        Product(name: 'Eggs'),
-        Product(name: 'Flour'),
-        Product(name: 'Chocolate chips'),
+  debugPaintSizeEnabled = false; // Set to true for visual layout
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  static final showCard = true; // Set to false to show Stack
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+        title: 'Flutter layout demo',
+        home: Scaffold(
+            appBar: AppBar(
+              title: Text('Flutter layout demo'),
+            ),
+            body: ListView(
+              children: [
+                Image.asset(
+                  'cool.png',
+                  width: 600,
+                  height: 240,
+                  fit: BoxFit.cover,
+                ),
+                titleSection,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildButtonColumn(
+                        Theme.of(context).primaryColor, Icons.call, 'CALL'),
+                    _buildButtonColumn(
+                        Theme.of(context).primaryColor, Icons.near_me, 'ROUTE'),
+                    _buildButtonColumn(
+                        Theme.of(context).primaryColor, Icons.share, 'SHARE'),
+                    _buildButtonColumn(
+                        Theme.of(context).primaryColor, Icons.api, 'API'),
+                  ],
+                ),
+                textSection
+              ],
+            )));
+  }
+
+  Column _buildButtonColumn(Color color, IconData icon, String label) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, color: color),
+        Container(
+          margin: const EdgeInsets.only(top: 8),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w400,
+              color: color,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget textSection = Container(
+    padding: const EdgeInsets.all(32),
+    child: Text(
+      'Lake Oeschinen lies at the foot of the Blüemlisalp in the Bernese '
+      'Alps. Situated 1,578 meters above sea level, it is one of the '
+      'larger Alpine Lakes. A gondola ride from Kandersteg, followed by a '
+      'half-hour walk through pastures and pine forest, leads you to the '
+      'lake, which warms to 20 degrees Celsius in the summer. Activities '
+      'enjoyed here include rowing, and riding the summer toboggan run.',
+      softWrap: true,
+    ),
+  );
+
+  Widget titleSection = Container(
+    padding: const EdgeInsets.all(32),
+    child: Row(
+      children: [
+        Expanded(
+          /*1*/
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              /*2*/
+              Container(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Oeschinen Lake Campground',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Text(
+                'Kandersteg, Switzerland',
+                style: TextStyle(
+                  color: Colors.grey[500],
+                ),
+              ),
+            ],
+          ),
+        ),
+        /*3*/
+        Icon(
+          Icons.star,
+          color: Colors.red[500],
+        ),
+        Text('41'),
       ],
     ),
-  ));
+  );
 }
