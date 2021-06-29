@@ -1,97 +1,117 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-Future<Post> fetchPost() async {
-  Future<Post> a;
-  final response =
-      await http.get(Uri.parse('https://jsonplaceholder.typicode.com/posts/1'));
-  a = Future.delayed(Duration(seconds: 3), () {
-    if (response.statusCode == 200) {
-      // 만약 서버로의 요청이 성공하면, JSON을 파싱합니다.
-      print(json.decode(response.body)['title']);
-      return Post.fromJson(json.decode(response.body));
-    } else {
-      // 만약 요청이 실패하면, 에러를 던집니다.
-      throw Exception('Failed to load post');
-    }
-  });
-  return a;
+Future fetchPhotos(http.Client client) async {
+  final response = await client
+      .get(Uri.parse('https://jsonplaceholder.typicode.com/photos'));
+
+  // compute 함수를 사용하여 parsePhotos를 별도 isolate에서 수행합니다.
+  return compute(parsePhotos, response.body);
 }
 
-class Post {
-  final int userId;
+// 응답 결과를 List<Photo>로 변환하는 함수.
+List parsePhotos(String responseBody) {
+  final parsed = json.decode(responseBody);
+
+  return parsed.map((json) => Photo.fromJson(json)).toList();
+}
+
+class Photo {
+  final int albumId;
   final int id;
   final String title;
-  final String body;
+  final String url;
+  final String thumbnailUrl;
 
-  Post(
-      {required this.userId,
+  Photo(
+      {required this.albumId,
       required this.id,
       required this.title,
-      required this.body});
+      required this.url,
+      required this.thumbnailUrl});
 
-// json으로 들어올 때의 생성자
-  factory Post.fromJson(Map<String, dynamic> json) {
-    return Post(
-      userId: json['userId'],
+  factory Photo.fromJson(Map json) {
+    return Photo(
+      albumId: json['albumId'],
       id: json['id'],
       title: json['title'],
-      body: json['body'],
+      url: json['url'],
+      thumbnailUrl: json['thumbnailUrl'],
     );
   }
 }
 
 void main() => runApp(MyApp());
 
-class MyApp extends StatefulWidget {
-  MyApp({Key? key}) : super(key: key);
-
+class MyApp extends StatelessWidget {
   @override
-  _MyAppState createState() => _MyAppState();
+  Widget build(BuildContext context) {
+    final appTitle = 'Isolate Demo';
+
+    return MaterialApp(
+      title: appTitle,
+      home: MyHomePage(
+        title: appTitle,
+        photo: compute(fetchPhotos, http.Client()),
+      ),
+    );
+  }
 }
 
-class _MyAppState extends State<MyApp> {
-  Future<Post>? post;
+class MyHomePage extends StatelessWidget {
+  final String title;
+  final Future photo;
 
-  @override
-  void initState() {
-    // react의 useEffect()와 비슷, 혹은 componentDidMount()
-    super.initState();
-    post = fetchPost();
-  }
+  MyHomePage({Key? key, required this.title, required this.photo})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Fetch Data Example',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
       ),
-      home: Scaffold(
-        appBar: AppBar(
-          title: Text('Fetch Data Example'),
-        ),
-        body: Center(
-          // 데이터를 화면에 보여주기 위한 목적으로, FutureBuilder 위젯을 사용할 수 있습니다. FutureBuilder 위젯은 Flutter에 기본적으로 제공되는 위젯으로 비동기 데이터 처리를 쉽게 해줍니다.
-          child: FutureBuilder<Post>(
-            future: post,
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                return Text(
-                    snapshot.data!.title + '\n\n' + snapshot.data!.body);
-              } else if (snapshot.hasError) {
-                return Text("${snapshot.error}");
-              }
+      body: FutureBuilder(
+        future: photo,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) print(snapshot.error);
 
-              // 기본적으로 로딩 Spinner를 보여줍니다.
-              return CircularProgressIndicator();
-            },
-          ),
-        ),
+          return snapshot.hasData
+              ? PhotosList(photos: snapshot.data)
+              : Center(child: CircularProgressIndicator());
+        },
       ),
+    );
+  }
+}
+
+class PhotosList extends StatelessWidget {
+  final photos;
+
+  PhotosList({required this.photos});
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+      ),
+      itemBuilder: (context, index) {
+        print("url:" + photos[index].thumbnailUrl);
+        return Stack(children: [
+          FadeInImage(
+            width: 100,
+            height: 100,
+            image: NetworkImage(photos[index].thumbnailUrl),
+            placeholder: AssetImage('cool.png'),
+          ),
+          Text(photos[index].id.toString())
+        ]);
+      },
     );
   }
 }
