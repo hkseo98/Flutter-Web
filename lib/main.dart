@@ -30,7 +30,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  String txt = '';
+  TextEditingController _controller = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +44,8 @@ class _MyHomePageState extends State<MyHomePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             TextFormField(
-              onChanged: (value) => {this.txt = value},
+              style: TextStyle(fontSize: 100),
+              controller: _controller,
               decoration: const InputDecoration(
                   hintText: 'Enter Something',
                   contentPadding: EdgeInsets.all(16)),
@@ -58,7 +59,7 @@ class _MyHomePageState extends State<MyHomePage> {
             StreamBuilder(
               stream: widget.channel.stream,
               builder: (context, snapshot) {
-                return txt != ''
+                return _controller.text != ''
                     ? Padding(
                         padding: const EdgeInsets.symmetric(vertical: 12.0),
                         child: Container(
@@ -87,10 +88,14 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _sendMessage() {
-    print(this.txt);
-    if (this.txt.isNotEmpty) {
-      widget.channel.sink.add(this.txt);
+    if (_controller.text.isNotEmpty) {
+      widget.channel.sink.add(_controller.text);
     }
+    setMessage();
+  }
+
+  void setMessage() {
+    Future.delayed(Duration(seconds: 1), () => {_controller.text = ''});
   }
 
   @override
