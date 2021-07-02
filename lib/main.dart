@@ -1,106 +1,60 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final title = 'WebSocket Demo';
+    final title = 'Todo App';
     return MaterialApp(
       title: title,
       home: MyHomePage(
         title: title,
-        channel: WebSocketChannel.connect(Uri.parse('ws://echo.websocket.org')),
       ),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class MyHomePage extends StatelessWidget {
   final String title;
-  final WebSocketChannel channel;
-
-  MyHomePage({Key? key, required this.title, required this.channel})
-      : super(key: key);
-
-  @override
-  _MyHomePageState createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  TextEditingController _controller = TextEditingController();
+  MyHomePage({required this.title});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            TextFormField(
-              style: TextStyle(fontSize: 100),
-              controller: _controller,
-              decoration: const InputDecoration(
-                  hintText: 'Enter Something',
-                  contentPadding: EdgeInsets.all(16)),
-              validator: (String? value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter some text';
-                }
-                return null;
-              },
-            ),
-            StreamBuilder(
-              stream: widget.channel.stream,
-              builder: (context, snapshot) {
-                return _controller.text != ''
-                    ? Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12.0),
-                        child: Container(
-                            child: Padding(
-                              child: Text(
-                                  snapshot.hasData ? '${snapshot.data}' : ''),
-                              padding: EdgeInsets.all(5),
-                            ),
-                            decoration: BoxDecoration(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(12)),
-                              border: Border.all(color: Colors.blue, width: 1),
-                            )))
-                    : Container();
-              },
-            )
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _sendMessage,
-        tooltip: 'Send message',
-        child: Icon(Icons.send),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      appBar: AppBar(title: Text(title)),
+      backgroundColor: Colors.grey,
+      body: MyBody(),
     );
   }
+}
 
-  void _sendMessage() {
-    if (_controller.text.isNotEmpty) {
-      widget.channel.sink.add(_controller.text);
-    }
-    setMessage();
-  }
+class MyBody extends StatefulWidget {
+  @override
+  _MyBodyState createState() => _MyBodyState();
+}
 
-  void setMessage() {
-    Future.delayed(Duration(seconds: 1), () => {_controller.text = ''});
-  }
+class _MyBodyState extends State<MyBody> {
+  TextEditingController _controller = TextEditingController();
 
   @override
-  void dispose() {
-    widget.channel.sink.close();
-    super.dispose();
+  Widget build(BuildContext context) {
+    return Container(
+      child: Column(
+        children: [
+          Container(
+            width: 500,
+            height: 100,
+            child: Form(
+              child: TextFormField(
+                autofocus: true,
+                autocorrect: true,
+                controller: _controller,
+              ),
+            ),
+          )
+        ],
+      ),
+    );
   }
 }
