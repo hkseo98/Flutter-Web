@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'dart:html';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+var url = "http://localhost:3000";
 
 void main() => runApp(MyApp());
 
@@ -21,20 +24,11 @@ class MyApp extends StatelessWidget {
 class MyHomePage extends StatelessWidget {
   final String title;
   MyHomePage({required this.title});
-  final List<TodoList> todoMap = [];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth > 740) {
-            return MyBigBody(todoMap: todoMap);
-          } else {
-            return MySmallBody(todoMap: todoMap);
-          }
-        },
-      ),
+      body: FetchTodoList(),
       appBar: AppBar(
         title: Text(title),
       ),
@@ -73,8 +67,47 @@ class MyHomePage extends StatelessWidget {
   }
 }
 
+class FetchTodoList extends StatefulWidget {
+  @override
+  _FetchTodoListState createState() => _FetchTodoListState();
+
+  List<TodoList> todoMap = [];
+}
+
+class _FetchTodoListState extends State<FetchTodoList> {
+  @override
+  void initState() {
+    super.initState();
+    fetchTodoMap();
+  }
+
+  Future<void> fetchTodoMap() async {
+    var response = await http.get(Uri.parse(url + '/fetch_todo_list'));
+    Map<String, dynamic> map = json.decode(response.body);
+    List<TodoList> initTodo =
+        map.entries.map((e) => TodoList.fromJson(e.value)).toList();
+    setState(() {
+      widget.todoMap = List.from(initTodo.reversed);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth > 740) {
+          return MyBigBody(todoMap: widget.todoMap);
+        } else {
+          return MySmallBody(todoMap: widget.todoMap);
+        }
+      },
+    );
+  }
+}
+
+// ignore: must_be_immutable
 class MyBigBody extends StatefulWidget {
-  final List<TodoList> todoMap;
+  List<TodoList> todoMap;
 
   MyBigBody({required this.todoMap});
 
@@ -86,16 +119,28 @@ class TodoList {
   String name = '';
   bool completed = false;
   String registerdTime = '';
-  DateTime? dueDate;
+  String? dueDate;
 
-  TodoList({required this.name, required this.registerdTime, this.dueDate});
+  TodoList(
+      {required this.name,
+      required this.registerdTime,
+      this.dueDate,
+      completed});
+
+  factory TodoList.fromJson(Map<String, dynamic> json) {
+    return TodoList(
+        name: json['name'],
+        completed: json['completed'],
+        registerdTime: json['registerd_time'],
+        dueDate: json['due_date']);
+  }
 }
 
 class _MyBodyState extends State<MyBigBody> {
   TextEditingController _controller = TextEditingController();
   DateTime? _selectedTime;
 
-  onPress({name, registeredTime, dueDate}) {
+  onPress({name, registeredTime, dueDate}) async {
     print(dueDate);
     if (name == '') {
       showDialog(
@@ -117,11 +162,28 @@ class _MyBodyState extends State<MyBigBody> {
       );
       return;
     }
+
     TodoList todo =
         TodoList(name: name, registerdTime: registeredTime, dueDate: dueDate);
+
+    // post todo
+    var response = await http.post(
+      Uri.parse(url + '/post_todo'),
+      body: {
+        "name": name,
+        "registered_time": registeredTime.toString(),
+        "due_date": dueDate.toString()
+      },
+      headers: <String, String>{
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    );
+    print(response.body);
+
     setState(() {
-      widget.todoMap.add(todo);
+      widget.todoMap.insert(0, todo);
     });
+
     this._controller.text = '';
     this._selectedTime = null;
   }
@@ -210,7 +272,7 @@ class _MySmallBodyState extends State<MySmallBody> {
   TextEditingController _controller = TextEditingController();
   DateTime? _selectedTime;
 
-  onPress({name, registeredTime, dueDate}) {
+  onPress({name, registeredTime, dueDate}) async {
     print(dueDate);
     if (name == '') {
       showDialog(
@@ -232,11 +294,28 @@ class _MySmallBodyState extends State<MySmallBody> {
       );
       return;
     }
+
     TodoList todo =
         TodoList(name: name, registerdTime: registeredTime, dueDate: dueDate);
+
+    // post todo
+    var response = await http.post(
+      Uri.parse(url + '/post_todo'),
+      body: {
+        "name": name,
+        "registered_time": registeredTime.toString(),
+        "due_date": dueDate.toString()
+      },
+      headers: <String, String>{
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    );
+    print(response.body);
+
     setState(() {
-      widget.todoMap.add(todo);
+      widget.todoMap.insert(0, todo);
     });
+
     this._controller.text = '';
     this._selectedTime = null;
   }
@@ -318,7 +397,7 @@ class _MySmallBodyState extends State<MySmallBody> {
 }
 
 class ShowList extends StatefulWidget {
-  final List<TodoList> todoMap;
+  final List<TodoList>? todoMap;
 
   ShowList({required this.todoMap});
 
@@ -398,7 +477,7 @@ class _ShowListState extends State<ShowList> {
       return Colors.black;
     }
 
-    Iterable<Row> map = widget.todoMap.map((element) {
+    Iterable<Row> map = widget.todoMap!.map((element) {
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
@@ -428,10 +507,13 @@ class _ShowListState extends State<ShowList> {
             child: SizedBox(
               width: 100,
               child: ElevatedButton(
-                  onPressed: () => setState(() {
-                        widget.todoMap.removeWhere(
-                            (e) => e.registerdTime == element.registerdTime);
-                      }),
+                  onPressed: () => {
+                        setState(() {
+                          widget.todoMap!.removeWhere(
+                              (e) => e.registerdTime == element.registerdTime);
+                          deleteTodohttp(element);
+                        })
+                      },
                   child: Text('DELETE')),
             ),
           )
@@ -448,7 +530,7 @@ class _ShowListState extends State<ShowList> {
     });
   }
 
-  showDueDate(DateTime? dueDate) {
+  showDueDate(String? dueDate) {
     if (dueDate == null) {
       return SizedBox(
         child: Center(child: Text('undecided')),
@@ -460,5 +542,11 @@ class _ShowListState extends State<ShowList> {
         width: 100,
       );
     }
+  }
+
+  Future<void> deleteTodohttp(TodoList element) async {
+    var response = await http.post(Uri.parse(url + '/delete_todo'),
+        body: {"registered_time": element.registerdTime});
+    print(response.body);
   }
 }
