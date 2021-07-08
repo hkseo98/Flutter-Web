@@ -67,6 +67,7 @@ class MyHomePage extends StatelessWidget {
   }
 }
 
+// ignore: must_be_immutable
 class FetchTodoList extends StatefulWidget {
   @override
   _FetchTodoListState createState() => _FetchTodoListState();
@@ -116,18 +117,19 @@ class MyBigBody extends StatefulWidget {
 }
 
 class TodoList {
-  String name = '';
-  bool completed = false;
-  String registerdTime = '';
+  String name;
+  bool completed;
+  String registerdTime;
   String? dueDate;
 
   TodoList(
       {required this.name,
       required this.registerdTime,
       this.dueDate,
-      completed});
+      required this.completed});
 
   factory TodoList.fromJson(Map<String, dynamic> json) {
+    print(json['completed']);
     return TodoList(
         name: json['name'],
         completed: json['completed'],
@@ -140,7 +142,7 @@ class _MyBodyState extends State<MyBigBody> {
   TextEditingController _controller = TextEditingController();
   DateTime? _selectedTime;
 
-  onPress({name, registeredTime, dueDate}) async {
+  onPress({name, registeredTime, dueDate, completed}) async {
     print(dueDate);
     if (name == '') {
       showDialog(
@@ -163,8 +165,11 @@ class _MyBodyState extends State<MyBigBody> {
       return;
     }
 
-    TodoList todo =
-        TodoList(name: name, registerdTime: registeredTime, dueDate: dueDate);
+    TodoList todo = TodoList(
+        name: name,
+        registerdTime: registeredTime,
+        dueDate: dueDate.toString(),
+        completed: false);
 
     // post todo
     var response = await http.post(
@@ -217,7 +222,7 @@ class _MyBodyState extends State<MyBigBody> {
                 child: ElevatedButton(
                   child: Padding(
                     padding: EdgeInsets.all(10),
-                    child: Text('picking D-Day'),
+                    child: Text('picking Due Date'),
                   ),
                   onPressed: bringDatePicker,
                 ),
@@ -230,7 +235,8 @@ class _MyBodyState extends State<MyBigBody> {
                         onPress(
                             name: _controller.text,
                             registeredTime: DateTime.now().toString(),
-                            dueDate: _selectedTime)
+                            dueDate: _selectedTime,
+                            completed: false)
                       },
                   child: Padding(
                     padding: EdgeInsets.all(10),
@@ -295,8 +301,11 @@ class _MySmallBodyState extends State<MySmallBody> {
       return;
     }
 
-    TodoList todo =
-        TodoList(name: name, registerdTime: registeredTime, dueDate: dueDate);
+    TodoList todo = TodoList(
+        name: name,
+        registerdTime: registeredTime,
+        dueDate: dueDate.toString(),
+        completed: false);
 
     // post todo
     var response = await http.post(
@@ -490,9 +499,12 @@ class _ShowListState extends State<ShowList> {
               child: Checkbox(
                 value: element.completed,
                 onChanged: (bool? value) {
+                  print(element.completed);
                   setState(() {
                     element.completed = value!;
+                    completeCheckHttp(element);
                   });
+                  print(element.completed);
                 },
                 splashRadius: 15,
                 shape: RoundedRectangleBorder(
@@ -546,6 +558,12 @@ class _ShowListState extends State<ShowList> {
 
   Future<void> deleteTodohttp(TodoList element) async {
     var response = await http.post(Uri.parse(url + '/delete_todo'),
+        body: {"registered_time": element.registerdTime});
+    print(response.body);
+  }
+
+  Future<void> completeCheckHttp(TodoList element) async {
+    var response = await http.post(Uri.parse(url + '/complete_todo'),
         body: {"registered_time": element.registerdTime});
     print(response.body);
   }
